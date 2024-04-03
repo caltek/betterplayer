@@ -464,6 +464,12 @@ enum VideoEventType {
 
   /// An unknown event has been received.
   unknown,
+
+  /// On video size changed
+  sizeChanged,
+
+  /// On video is playing
+  isPlayingStateUpdate
 }
 
 /// Describes a discrete segment of time within a video using a [start] and

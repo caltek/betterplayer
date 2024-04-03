@@ -6,6 +6,7 @@
 import 'dart:async';
 import 'dart:io';
 import 'package:better_player/src/configuration/better_player_buffering_configuration.dart';
+import 'package:better_player/src/core/better_player_utils.dart';
 import 'package:better_player/src/video_player/video_player_platform_interface.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -23,6 +24,7 @@ class VideoPlayerValue {
   VideoPlayerValue({
     required this.duration,
     this.size,
+    this.videoSize = Size.zero,
     this.position = const Duration(),
     this.absolutePosition,
     this.buffered = const <DurationRange>[],
@@ -84,6 +86,9 @@ class VideoPlayerValue {
   /// Is null when [initialized] is false.
   final Size? size;
 
+  ///real size of the currently playing video
+  final Size? videoSize;
+
   ///Is in Picture in Picture Mode
   final bool isPip;
 
@@ -112,6 +117,7 @@ class VideoPlayerValue {
   VideoPlayerValue copyWith({
     Duration? duration,
     Size? size,
+    Size? videoSize,
     Duration? position,
     DateTime? absolutePosition,
     List<DurationRange>? buffered,
@@ -124,19 +130,19 @@ class VideoPlayerValue {
     bool? isPip,
   }) {
     return VideoPlayerValue(
-      duration: duration ?? this.duration,
-      size: size ?? this.size,
-      position: position ?? this.position,
-      absolutePosition: absolutePosition ?? this.absolutePosition,
-      buffered: buffered ?? this.buffered,
-      isPlaying: isPlaying ?? this.isPlaying,
-      isLooping: isLooping ?? this.isLooping,
-      isBuffering: isBuffering ?? this.isBuffering,
-      volume: volume ?? this.volume,
-      speed: speed ?? this.speed,
-      errorDescription: errorDescription ?? this.errorDescription,
-      isPip: isPip ?? this.isPip,
-    );
+        duration: duration ?? this.duration,
+        size: size ?? this.size,
+        position: position ?? this.position,
+        absolutePosition: absolutePosition ?? this.absolutePosition,
+        buffered: buffered ?? this.buffered,
+        isPlaying: isPlaying ?? this.isPlaying,
+        isLooping: isLooping ?? this.isLooping,
+        isBuffering: isBuffering ?? this.isBuffering,
+        volume: volume ?? this.volume,
+        speed: speed ?? this.speed,
+        errorDescription: errorDescription ?? this.errorDescription,
+        isPip: isPip ?? this.isPip,
+        videoSize: videoSize ?? this.videoSize);
   }
 
   @override
@@ -218,7 +224,8 @@ class VideoPlayerController extends ValueNotifier<VideoPlayerValue> {
             duration: event.duration,
             size: event.size,
           );
-          _initializingCompleter.complete(null);
+          if (!_initializingCompleter.isCompleted)
+            _initializingCompleter.complete(null);
           _applyPlayPause();
           break;
         case VideoEventType.completed:
@@ -236,7 +243,9 @@ class VideoPlayerController extends ValueNotifier<VideoPlayerValue> {
             value = value.copyWith(isBuffering: false);
           }
           break;
-
+        case VideoEventType.sizeChanged:
+          value = value.copyWith(videoSize: event.size);
+          break;
         case VideoEventType.play:
           play();
           break;
@@ -253,6 +262,9 @@ class VideoPlayerController extends ValueNotifier<VideoPlayerValue> {
           value = value.copyWith(isPip: false);
           break;
         case VideoEventType.unknown:
+          break;
+        case VideoEventType.isPlayingStateUpdate:
+          // TODO: Handle this case.
           break;
       }
     }

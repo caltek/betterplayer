@@ -371,6 +371,7 @@ static inline CGFloat radiansToDegrees(CGFloat radians) {
         }
     }
     else if (context == presentationSizeContext){
+        [self sendSizeUpdate];
         [self onReadyToPlay];
     }
 
@@ -484,6 +485,34 @@ static inline CGFloat radiansToDegrees(CGFloat radians) {
     }
 }
 
+-(void) sendSizeUpdate {
+    if (_eventSink && _key && _isInitialized) {
+        if (!_player.currentItem) {
+            return;
+        }
+        CGSize size = [_player currentItem].presentationSize;
+        CGFloat width = size.width;
+        CGFloat height = size.height;
+        const BOOL isLive = CMTIME_IS_INDEFINITE([_player currentItem].duration);
+        if (isLive == false && [self duration] == 0) {
+            return;
+        }
+
+        //Fix from https://github.com/flutter/flutter/issues/66413
+        AVPlayerItemTrack *track = [self.player currentItem].tracks.firstObject;
+        CGSize naturalSize = track.assetTrack.naturalSize;
+        CGAffineTransform prefTrans = track.assetTrack.preferredTransform;
+        CGSize realSize = CGSizeApplyAffineTransform(naturalSize, prefTrans);
+        
+        _eventSink(@{
+            @"event" : @"sizeChanged",
+            @"width" : @(fabs(realSize.width) ? : width),
+            @"height" : @(fabs(realSize.height) ? : height),
+            @"key" : _key
+        });
+    }
+}
+
 - (void)play {
     _stalledCount = 0;
     _isStalledCheckStarted = false;
@@ -519,22 +548,21 @@ static inline CGFloat radiansToDegrees(CGFloat radians) {
 }
 
 - (void)seekTo:(int)location {
-    ///When player is playing, pause video, seek to new position and start again. This will prevent issues with seekbar jumps.
-    bool wasPlaying = _isPlaying;
-    if (wasPlaying){
-        [_player pause];
-    }
+   ///When player is playing, pause video, seek to new position and start again. This will prevent issues with seekbar jumps.
+   bool wasPlaying = _isPlaying;
+   if (wasPlaying){
+       [_player pause];
+   }
 
-    [_player seekToTime:CMTimeMake(location, 1000)
-        toleranceBefore:kCMTimeZero
-         toleranceAfter:kCMTimeZero
-      completionHandler:^(BOOL finished){
-        if (wasPlaying){
-            _player.rate = _playerRate;
-        }
-    }];
+   [_player seekToTime:CMTimeMake(location, 1000)
+       toleranceBefore:kCMTimeZero
+        toleranceAfter:kCMTimeZero
+     completionHandler:^(BOOL finished){
+       if (wasPlaying){
+           _player.rate = _playerRate;
+       }
+   }];
 }
-
 - (void)setIsLooping:(bool)isLooping {
     _isLooping = isLooping;
 }
